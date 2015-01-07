@@ -1,3 +1,6 @@
 build
 *.pyc
 *.save*
+address_book.io
+add_person.py
+list_peope.py
