@@ -1,0 +1,17 @@
+Installing proto buffers
+------------------------
+
+```
+cd protobuf-{version}
+./configure
+make
+sudo make install
+cd python
+python setup.py build
+sudo python setup.py install
+```
+
+Rebuilding protocol
+-------------------
+
+```protoc --proto_path=proto/ --python_out=build/ proto/tt.proto```

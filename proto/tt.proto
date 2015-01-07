@@ -1,0 +1,13 @@
+// Timestamp reflects current state of the hybrid logical clock
+
+message Timestamp {
+
+  // Holds a unix epoch time in nanosecs
+  optional int64 wall_time = 1;
+
+  // The logical component captures causality for events
+  // whose wall times are equal. It is effectively bounded
+  // by (maximum clock skew) / (minimal ns between events) and nearly
+  // impossible to overflow
+  optional int32 logical = 2;
+}
