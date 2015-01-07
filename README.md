@@ -17,3 +17,6 @@ Further Work:
 
 - maintain offset from ntp
 - maintain maxoffset
+- simulation with threads
+- simulation in multi node env
+- simulation in WAN
