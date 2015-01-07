@@ -1,4 +1,5 @@
 build
+proto/msg.proto
 *.pyc
 *.save*
 address_book.io

@@ -10,3 +10,10 @@ clock sync uncertainties like TrueTime did.
 From this paper the main observation is that for any event f
 |l.f - pt.f| <= eps, where eps is maximum offset maintained by NTP. At the same
 time another observation is that: c.f <= N * (eps + 1), where N is number of nodes in the system for that last eps.
+
+
+Further Work:
+-------------
+
+- maintain offset from ntp
+- maintain maxoffset
