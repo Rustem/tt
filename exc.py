@@ -1,0 +1,2 @@
+class AheadOfMaxOffsetError(Exception):
+    pass
