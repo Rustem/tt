@@ -1,20 +1,29 @@
-from tt import Clock
-import etcd
-import uuid
-from gevent.server import StreamServer
-from gevent import socket
 import utils
 import os
 pj = os.path.join
+import uuid
+from functools import partial
+import etcd
+import gevent
+from gevent.server import StreamServer
+from build import tt_pb2 as proto
+from tt import Clock
 
 
 LEADER_LEASE = 60
-CONNECTION_TIMEOUT = 15
+CONNECTION_TIMEOUT = 150
 # CONFIG_RESOURCE = 'http://178.62.168.162:4001/v2/'
 ETCD_HOST = '178.62.168.162'
 ETCD_PORT = 4001
 SERVICE_NAME = '_db'
 DEFAULT_MAX_OFFSET = 250  # micro
+DEFAULT_BUFF_SIZE = 1024
+
+
+def send_rpc_request(socket, request, response):
+    socket.send(request.SerializeToString())
+    response.ParseFromString(socket.recv(DEFAULT_BUFF_SIZE))
+    return response
 
 
 class SimpleDiscoveryProtocol(object):
@@ -42,15 +51,20 @@ class SimpleDiscoveryProtocol(object):
 
     def get_peers(self, cluster_id):
         result = self._exec_read(cluster_id, recursive=True)
-        return ((peer.key, peer.value) for peer in result.children)
+        return ((peer.key, peer.value) for peer in result.children
+                if not peer.key.endswith('state'))
 
     def _exec_write(self, dir_name, value, **kwargs):
-        key = pj(self._base_dir, dir_name)
+        key = '/' + pj(self._base_dir, dir_name)
         return self._etcd.write(key, value, **kwargs)
 
     def _exec_read(self, dir_name, **kwargs):
-        key = pj(self._base_dir, dir_name)
+        key = '/' + pj(self._base_dir, dir_name)
         return self._etcd.read(key, **kwargs)
+
+    def cleanup(self):
+        key = '/' + self._base_dir
+        self._etcd.delete(key, recursive=True)
 
 
 class Server(object):
@@ -61,30 +75,61 @@ class Server(object):
         self.cluster_uuid = cluster_uuid
         self.clock = Clock()
         self.clock.SetMaxOffset(max_offset)
-        self.server = StreamServer((utils.parse_host(host),),
+        self.server = StreamServer(utils.parse_host(host),
                                    self._handle_connection)
         self.neighbors = {}
         self._discovery_proto = SimpleDiscoveryProtocol()
         self._network_leader = False
 
     def _handle_connection(self, socket, address):
-        self.neighbors[address] = socket
-        print 'New connection entered'
+        remote_node_uuid = self.authenticate(socket)
+        print 'INCOMING CONN: %s' % remote_node_uuid
+        self.neighbors[remote_node_uuid] = socket
 
-    def start(self):
+    def _handle_outgoing_connection(self, node_uuid, socket):
+        self.neighbors[node_uuid] = socket
+
+    def authenticate(self, socket):
+        request = proto.AuthRequest(ping='auth')
+        response = proto.AuthResponse()
+        response = send_rpc_request(socket, request, response)
+        assert response.cluster_uuid == self.cluster_uuid, "cluster is bad"
+        return response.node_uuid
+
+    def start(self, cleanup=False):
+        if cleanup:
+            self._discovery_proto.cleanup()
         peers = self.discover_network(self.cluster_uuid)
+        jobs = []
         for node_uuid, node_host in peers:
-            self.establish_tcp_conn(node_host,
-                                    callback=self._handle_connection)
-        self.server.start()
+            if utils.thats_me(node_uuid, self.uuid):
+                continue
+            jobs.append(gevent.spawn(
+                self.establish_tcp_conn, node_host,
+                callback=partial(
+                    self._handle_outgoing_connection, node_uuid)))
+        gevent.joinall(jobs)   # todo(xepa4ep): might be timeout it
+        self.server.serve_forever()
+
         # self.monitor_clock_offset()
 
     def establish_tcp_conn(self, peer, callback=None):
         addr, port = utils.parse_host(peer)
-        new_sock = socket.create_connection((addr, port),
-                                            timeout=CONNECTION_TIMEOUT)
+        new_sock = gevent.socket.create_connection(
+            (addr, port), timeout=CONNECTION_TIMEOUT)
+        request = proto.AuthRequest()
+        with gevent.Timeout(CONNECTION_TIMEOUT):
+            request.ParseFromString(new_sock.recv(DEFAULT_BUFF_SIZE))
+            if request.HasField('ping'):  # auth
+                response = proto.AuthResponse(
+                    pong=request.ping,
+                    cluster_uuid=self.cluster_uuid,
+                    node_uuid=self.uuid)
+                new_sock.send(response.SerializeToString())
         if callback:
             callback(new_sock)
+        new_sock.timeout = None
+        gevent.spawn(self.serve_rpc, new_sock)
 
     def discover_network(self, cluster_id):
         self._discovery_proto.join(
@@ -92,6 +137,14 @@ class Server(object):
         if not self._discovery_proto.has_peers(cluster_id):
             self._network_leader = True
         return self._discovery_proto.get_peers(cluster_id)
+
+    def serve_rpc(self, socket):
+        while True:
+            print 'receiving...'
+            data = socket.recv(DEFAULT_BUFF_SIZE)
+            if not data:
+                return
+            print data, "hi"
 
     def stop(self):
         for _sock in self.neighbors.values():
@@ -106,11 +159,13 @@ def main():
     parser.add_argument('--cluster_id', type=str, help='UUID of cluster')
     parser.add_argument('--max_offset', type=int, default=DEFAULT_MAX_OFFSET,
                         help='max offset for internal wall time')
+    parser.add_argument('--cleanup', type=bool, default=False,
+                        help='max offset for internal wall time')
     args = parser.parse_args()
 
     # start a server
     server = Server(args.host, args.cluster_id, args.max_offset)
-    server.start()
+    server.start(cleanup=args.cleanup)
 
 
 if __name__ == '__main__':

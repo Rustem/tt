@@ -11,3 +11,15 @@ message Timestamp {
   // impossible to overflow
   optional int32 logical = 2;
 }
+
+message AuthRequest {
+    // Echo this string with PingResponse.
+    optional string ping = 1;
+}
+
+message AuthResponse {
+    // An echo of value sent with PingRequest.
+    optional string pong = 1;
+    optional string cluster_uuid = 2;
+    optional string node_uuid = 3;
+}
