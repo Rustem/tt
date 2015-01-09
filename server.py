@@ -85,6 +85,9 @@ class Server(object):
         remote_node_uuid = self.authenticate(socket)
         print 'INCOMING CONN: %s' % remote_node_uuid
         self.neighbors[remote_node_uuid] = socket
+        gevent.joinall(
+            [gevent.spawn(self.serve_rpc, socket),
+             gevent.spawn(self.serve_rpc_response, socket)])
 
     def _handle_outgoing_connection(self, node_uuid, socket):
         self.neighbors[node_uuid] = socket
@@ -129,7 +132,9 @@ class Server(object):
         if callback:
             callback(new_sock)
         utils.reset_timeout(new_sock)
-        gevent.spawn(self.serve_rpc, new_sock)
+        gevent.joinall(
+            [gevent.spawn(self.serve_rpc, new_sock),
+             gevent.spawn(self.serve_rpc_response, new_sock)])
 
     def discover_network(self, cluster_id):
         self._discovery_proto.join(
@@ -143,8 +148,14 @@ class Server(object):
             print 'receiving...'
             data = socket.recv(DEFAULT_BUFF_SIZE)
             if not data:
+                print "bye"
                 return
             print data, "hi"
+
+    def serve_rpc_response(self, socket):
+        while True:
+            gevent.sleep(3)
+            socket.send('[%s]: hi' % self.uuid)
 
     def stop(self):
         for _sock in self.neighbors.values():
