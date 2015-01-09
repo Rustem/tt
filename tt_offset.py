@@ -6,6 +6,11 @@ import conf as cf
 
 IntervalPoint = namedtuple('IntervalPoint', ['offset', 'type'])
 
+# ClockMonitor maintains offset of current node using
+# information about offsets on remote nodes.
+# Marzullo algorithm helps to determine a true offset interval.
+# The algorithm is described at http://infolab.stanford.edu/pub/cstr/reports/csl/tr/83/247/CSL-TR-83-247.pdf
+
 
 def compare_pts(l, r):
     if l.offset == r.offset:
