@@ -82,14 +82,16 @@ class Server(object):
         self._network_leader = False
 
     def _handle_connection(self, socket, address):
+        """Handle incoming connection."""
         remote_node_uuid = self.authenticate(socket)
         print 'INCOMING CONN: %s' % remote_node_uuid
         self.neighbors[remote_node_uuid] = socket
         gevent.joinall(
-            [gevent.spawn(self.serve_rpc, socket),
+            [gevent.spawn(self.serve_rpc_request, socket),
              gevent.spawn(self.serve_rpc_response, socket)])
 
     def _handle_outgoing_connection(self, node_uuid, socket):
+        """Handle outgoing connection."""
         self.neighbors[node_uuid] = socket
 
     def authenticate(self, socket):
@@ -100,6 +102,9 @@ class Server(object):
         return response.node_uuid
 
     def start(self, cleanup=False):
+        """Starter function:
+            * join itself to internal network.
+            * polls other nodes in the system for status/time/..."""
         if cleanup:
             self._discovery_proto.cleanup()
         peers = self.discover_network(self.cluster_uuid)
@@ -117,6 +122,8 @@ class Server(object):
         # self.monitor_clock_offset()
 
     def establish_tcp_conn(self, peer, callback=None):
+        """Manually establish tcp connection with other nodes
+        in the system."""
         addr, port = utils.parse_host(peer)
         new_sock = gevent.socket.create_connection(
             (addr, port), timeout=CONNECTION_TIMEOUT)
@@ -133,7 +140,7 @@ class Server(object):
             callback(new_sock)
         utils.reset_timeout(new_sock)
         gevent.joinall(
-            [gevent.spawn(self.serve_rpc, new_sock),
+            [gevent.spawn(self.serve_rpc_request, new_sock),
              gevent.spawn(self.serve_rpc_response, new_sock)])
 
     def discover_network(self, cluster_id):
@@ -143,7 +150,7 @@ class Server(object):
             self._network_leader = True
         return self._discovery_proto.get_peers(cluster_id)
 
-    def serve_rpc(self, socket):
+    def serve_rpc_response(self, socket):
         while True:
             print 'receiving...'
             data = socket.recv(DEFAULT_BUFF_SIZE)
@@ -152,7 +159,7 @@ class Server(object):
                 return
             print data, "hi"
 
-    def serve_rpc_response(self, socket):
+    def serve_rpc_request(self, socket):
         while True:
             gevent.sleep(3)
             socket.send('[%s]: hi' % self.uuid)
