@@ -42,6 +42,9 @@ class Clock(object):
     def TS(self):
         return deepcopy(self.ts)
 
+    def WallTime(self):
+        return self.physical_time()
+
     def SetMaxOffset(self, delta):
         self.max_offset = delta
 

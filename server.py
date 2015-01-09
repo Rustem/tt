@@ -8,6 +8,7 @@ import gevent
 from gevent.server import StreamServer
 from build import tt_pb2 as proto
 from tt import Clock
+from tt_offset import ClockMonitor
 
 
 LEADER_LEASE = 60
@@ -117,6 +118,7 @@ class Server(object):
                 callback=partial(
                     self._handle_outgoing_connection, node_uuid)))
         gevent.joinall(jobs)   # todo(xepa4ep): might be timeout it
+        gevent.spawn(ClockMonitor(self.clock).MonitorOffset())
         self.server.serve_forever()
 
         # self.monitor_clock_offset()

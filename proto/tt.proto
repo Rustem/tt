@@ -23,3 +23,12 @@ message AuthResponse {
     optional string cluster_uuid = 2;
     optional string node_uuid = 3;
 }
+
+message RemoteOffset {
+    // The estimated offset from the remote server, in microseconds.
+    optional int64 offset = 1;
+    // The maximum error of the measured offset, in microseconds.
+    optional int64 error = 2;
+    // Measurement time, in microseconds from unix epoch.
+    optional int64 measured_at = 3;
+}
