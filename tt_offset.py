@@ -74,6 +74,9 @@ class ClockMonitor(object):
         return ((lower, upper), None)
 
     def build_endpoint_list(self):
+        """Build list of points from remote offset intervals. If offset
+        is stale (checked earlier than last monitored) remove it from
+        offset list because this source is unreliable."""
         pts = []
         del_keys = set([])
         for addr, o in self.offsets.iteritems():
