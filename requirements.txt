@@ -1,2 +1,4 @@
 nose2
 protobuf
+python-etcd
+gevent

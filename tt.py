@@ -34,10 +34,10 @@ class Clock(object):
         max_offset - how far ahead of the physical clock the wall time can be.
     """
 
-    def __init__(self, physical_clock):
+    def __init__(self, physical_clock=None):
         self.ts = proto.Timestamp()
-        self.physical_time = physical_clock
-        self.max_offset = 0
+        self.physical_time = physical_clock if physical_clock is None else ts
+        self.max_offset = 0  # millis
 
     def TS(self):
         return deepcopy(self.ts)
