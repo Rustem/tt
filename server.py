@@ -128,7 +128,7 @@ class Server(object):
                 new_sock.send(response.SerializeToString())
         if callback:
             callback(new_sock)
-        new_sock.timeout = None
+        utils.reset_timeout(new_sock)
         gevent.spawn(self.serve_rpc, new_sock)
 
     def discover_network(self, cluster_id):

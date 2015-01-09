@@ -5,3 +5,7 @@ def parse_host(host):
 
 def thats_me(uuid_suffix, uuid):
     return uuid_suffix.endswith(uuid)
+
+
+def reset_timeout(sock):
+    sock.timeout = None
