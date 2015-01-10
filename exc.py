@@ -4,3 +4,7 @@ class AheadOfMaxOffsetError(Exception):
 
 class IntervalNotFoundError(Exception):
     pass
+
+
+class NodeAuthError(Exception):
+    pass

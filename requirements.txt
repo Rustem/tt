@@ -2,3 +2,5 @@ nose2
 protobuf
 python-etcd
 gevent
+mprpc
+greenclock

@@ -15,6 +15,10 @@ message Timestamp {
 message AuthRequest {
     // Echo this string with PingResponse.
     optional string ping = 1;
+    // server node uuid
+    optional string node_uuid = 2;
+    // server host
+    optional string host = 3;
 }
 
 message AuthResponse {
@@ -31,4 +35,20 @@ message RemoteOffset {
     optional int64 error = 2;
     // Measurement time, in microseconds from unix epoch.
     optional int64 measured_at = 3;
+}
+
+
+message HeartbeatRequest {
+    // Echo this string with HeartbeatResponse.
+    optional string ping = 1;
+}
+
+message HeartbeatResponse {
+    // An echo of value sent with HeartbeatRequest.
+    optional string pong = 1;
+    // current server wall time at the moment of message recv
+    optional int64 recv_time = 2;
+
+    // current server wall time at the moment of message send
+    optional int64 send_time = 3;
 }
