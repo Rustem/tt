@@ -42,6 +42,7 @@ class RPCClient(BaseRPCClient):
                 rr_delay = recv_time - send_time - (
                     response.send_time - response.recv_time)
                 offset.offset = response.send_time + (rr_delay / 2) - recv_time
+                offset.error = rr_delay / 2
                 offset.measured_at = recv_time
         self.bundle.remote_clock_monitor.UpdateRemoteOffset(
             self.remote_node_id, offset)
