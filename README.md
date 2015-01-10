@@ -22,7 +22,8 @@ Algorithm workflow:
         2.3 If new offset interval is "healthier" than previous, cause update current ofset
 
 Offset interval of node N is calculated as:
-[N.offset - N.error - N.maxoffset, N.offset + N.error + N.maxoffset]
+
+```[N.offset - N.error - N.maxoffset, N.offset + N.error + N.maxoffset]```
 
 Base case:
 - if the only source of time is node itself then we rely on its time with offset and error <0, 0>.
