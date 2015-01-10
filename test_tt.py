@@ -8,18 +8,6 @@ SEND = 's'
 RECV = 'r'
 
 
-class ManualClock(object):
-
-    def __init__(self, micros):
-        self.micros = micros
-
-    def set(self, micros):
-        self.micros = micros
-
-    def get_clock(self):
-        return self.micros
-
-
 ClockCase = namedtuple('ClockCase',
                        ['wall_time', 'event', 'input', 'expected'])
 
@@ -27,7 +15,7 @@ ClockCase = namedtuple('ClockCase',
 class TTTest(unittest.TestCase):
 
     def test_less(self):
-        m = ManualClock(0)
+        m = tt.ManualClock(0)
         c = tt.Clock(m.get_clock)
         a = c.TS()
         b = c.TS()
@@ -41,7 +29,7 @@ class TTTest(unittest.TestCase):
         self.assertGreater(a, b)
 
     def test_max_offset(self):
-        m = ManualClock(123456)
+        m = tt.ManualClock(123456)
         skewedTime = 123456 + 51
         c = tt.Clock(m.get_clock)
         self.assertTrue(c.max_offset == 0)
@@ -56,7 +44,7 @@ class TTTest(unittest.TestCase):
         self.assertTrue(isinstance(err, AheadOfMaxOffsetError))
 
     def test_clock(self):
-        m = ManualClock(0)
+        m = tt.ManualClock(0)
         c = tt.Clock(m.get_clock)
         c.SetMaxOffset(1000)
         expected_history = (

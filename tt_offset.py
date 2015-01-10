@@ -4,7 +4,12 @@ from collections import namedtuple
 from exc import IntervalNotFoundError
 import conf as cf
 
-IntervalPoint = namedtuple('IntervalPoint', ['offset', 'type'])
+
+class IntervalPoint(namedtuple('IntervalPoint', ['offset', 'type'])):
+    def __lt__(self, other):
+        if self.offset == other.offset:
+            return self.type < other.type
+        return self.offset < other.offset
 
 # ClockMonitor maintains offset of current node using
 # information about offsets on remote nodes.
@@ -97,3 +102,6 @@ class ClockMonitor(object):
         for key in del_keys:
             del self.offsets[key]
         return pts
+
+    def _replace_offsets(self, offsets):
+        self.offsets = {k: v for k, v in offsets.iteritems()}

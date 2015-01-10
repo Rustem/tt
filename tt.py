@@ -25,6 +25,24 @@ def ts():
     return int(round(time.time() * MICRO))
 
 
+class ManualClock(object):
+    """For unit testing purpose. To create manual clock:
+        ```
+        m = ManualClock(0)
+        clock = Clock(physical_clock=m.set)
+        ```
+    """
+
+    def __init__(self, micros):
+        self.micros = micros
+
+    def set(self, micros):
+        self.micros = micros
+
+    def get_clock(self):
+        return self.micros
+
+
 class Clock(object):
 
     """

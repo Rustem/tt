@@ -34,7 +34,6 @@ Further Work:
 -------------
 
 - maintain offset from ntp
-- maintain maxoffset
-- simulation with threads
+- maintain maxoffset (According to current implementation, provide this arg emperically)
 - simulation in multi node env
 - simulation in WAN
