@@ -37,3 +37,8 @@ Further Work:
 - maintain maxoffset (According to current implementation, provide this arg emperically)
 - simulation in multi node env
 - simulation in WAN
+
+
+memo:
+1. check number of byte from both sites
+2. why it's truncated

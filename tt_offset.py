@@ -40,7 +40,7 @@ class ClockMonitor(object):
         if old_offset is None:
             self.offsets[node_id] = offset
         elif old_offset.measured_at < self.last_monitored_at:
-            self.offsets[node_id] = self.last_monitored_at
+            self.offsets[node_id] = offset
         elif (old_offset.measured_at >= self.last_monitored_at and
               old_offset.error > offset.error):
             self.offsets[node_id] = offset
@@ -71,7 +71,7 @@ class ClockMonitor(object):
         pts = sorted(self.build_endpoint_list(), cmp=compare_pts)
         quorum = len(pts) / 4
         if not pts:
-            return ((0, 0), None)
+            return (0, 0)
         best, cnt = 0, 0
         lower, upper = 0, 0
         for i, pt in enumerate(pts):
@@ -81,7 +81,7 @@ class ClockMonitor(object):
                 lower, upper = pt.offset, pts[i + 1].offset
         if best <= quorum:
             raise IntervalNotFoundError('')
-        return ((lower, upper), None)
+        return (lower, upper)
 
     def build_endpoint_list(self):
         """Build list of points from remote offset intervals. If offset

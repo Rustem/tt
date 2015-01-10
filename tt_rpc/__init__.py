@@ -9,5 +9,5 @@ def NewRPCServer(host, **options):
     return StreamServer(host, RPCServer(**options))
 
 
-def NewRPCClient(host, **options):
-    return RPCClient(*host, **options)
+def NewRPCClient((host, port), **options):
+    return RPCClient(host, port, **options)

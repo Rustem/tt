@@ -18,7 +18,7 @@ CONNECTION_TIMEOUT = 150
 ETCD_HOST = '178.62.168.162'
 ETCD_PORT = 4001
 SERVICE_NAME = '_db'
-DEFAULT_MAX_OFFSET = 250  # micro
+DEFAULT_MAX_OFFSET = 250 * 1000  # micro
 
 
 def send_rpc_request(socket, request, response):
@@ -78,12 +78,13 @@ class Server(object):
         self.clock = Clock()
         self.clock_monitor = ClockMonitor(self.clock)
         self.clock.SetMaxOffset(max_offset)
-        self.bundle = Bundle(node_id=self.uuid,
+        self.bundle = Bundle(host=self.host,
+                             node_id=self.uuid,
                              local_clock=self.clock,
                              cluster_uuid=self.cluster_uuid,
                              remote_clock_monitor=self.clock_monitor)
         self.rpc_server = NewRPCServer(
-            self.host,
+            (self.addr, self.port),
             bundle=self.bundle,
             rpc_callback=self.on_rpc_request)
 
@@ -105,8 +106,8 @@ class Server(object):
             if utils.thats_me(node_uuid, self.uuid):
                 continue
             jobs.append(gevent.spawn(self.establish_conn, node_host))
-        gevent.joinall(jobs)   # todo(xepa4ep): might be timeout it
-        gevent.spawn(self.clock_monitor.MonitorOffset())
+        # gevent.joinall(jobs)   # todo(xepa4ep): might be timeout it
+        gevent.spawn(self.clock_monitor.MonitorOffset)
         self.rpc_server.serve_forever()
 
     def establish_conn(self, host):
@@ -123,6 +124,7 @@ class Server(object):
         self.start_heartbeat(_cli)
 
     def on_rpc_request(self, request_type, request):
+        print request_type + "#" + str(request)
         if request_type == _cf.AUTH_REQUEST:
             _cli = self.neighbors[request.node_uuid] = NewRPCClient(
                 utils.parse_host(request.host), bundle=self.bundle)
@@ -133,6 +135,7 @@ class Server(object):
         job = remote_rpc_client.heartbeat
         run_every = greenclock.every_second(_cf.HEARTBEAT_INTERVAL)
         self._scheduler.schedule('hb', run_every, job)
+        self._scheduler.run_forever(start_at='once')
 
     def discover_network(self, cluster_id):
         self._discovery_proto.join(
