@@ -54,7 +54,7 @@ class Clock(object):
 
     def __init__(self, physical_clock=None):
         self.ts = proto.Timestamp()
-        self.physical_time = physical_clock if physical_clock is None else ts
+        self.physical_time = ts if physical_clock is None else physical_clock
         self.max_offset = 0  # millis
 
     def TS(self):

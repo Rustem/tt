@@ -38,7 +38,7 @@ class TTOffsetTest(unittest.TestCase):
         }
 
         m = tt.ManualClock(0)
-        clock = tt.Clock(m.set)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(5)
 
         remoteClocks = ClockMonitor(clock)
@@ -67,8 +67,8 @@ class TTOffsetTest(unittest.TestCase):
             'false_0': proto.RemoteOffset(offset=1, error=5, measured_at=0),
             'false_1': proto.RemoteOffset(offset=0, error=2, measured_at=9)
         }
-        manual = tt.ManualClock(0)
-        clock = tt.Clock(manual.set)
+        m = tt.ManualClock(0)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(5)
 
         remoteClocks = ClockMonitor(clock)
@@ -90,8 +90,8 @@ class TTOffsetTest(unittest.TestCase):
             'false_1': proto.RemoteOffset(offset=0, error=2, measured_at=9)
         }
 
-        manual = tt.ManualClock(0)
-        clock = tt.Clock(manual.set)
+        m = tt.ManualClock(0)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(0)
 
         remoteClocks = ClockMonitor(clock)
@@ -111,8 +111,8 @@ class TTOffsetTest(unittest.TestCase):
             '3': proto.RemoteOffset(offset=9, error=1)
         }
 
-        manual = tt.ManualClock(0)
-        clock = tt.Clock(manual.set)
+        m = tt.ManualClock(0)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(0)
 
         remoteClocks = ClockMonitor(clock)
@@ -120,8 +120,8 @@ class TTOffsetTest(unittest.TestCase):
         self.assertRaises(Exception, remoteClocks.find_offset_interval)
 
     def test_findOffsetIntervalNoSources(self):
-        manual = tt.ManualClock(0)
-        clock = tt.Clock(manual.set)
+        m = tt.ManualClock(0)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(0)
 
         remoteClocks = ClockMonitor(clock)
@@ -134,8 +134,8 @@ class TTOffsetTest(unittest.TestCase):
             '0': proto.RemoteOffset(offset=0, error=15)
         }
 
-        manual = tt.ManualClock(0)
-        clock = tt.Clock(manual.set)
+        m = tt.ManualClock(0)
+        clock = tt.Clock(m.get_clock)
         clock.SetMaxOffset(20)
 
         remoteClocks = ClockMonitor(clock)
