@@ -55,6 +55,10 @@ class SimpleDiscoveryProtocol(object):
         return ((peer.key, peer.value) for peer in result.children
                 if not peer.key.endswith('state'))
 
+    def cleanup(self):
+        key = '/' + self._base_dir
+        self._etcd.delete(key, recursive=True)
+
     def _exec_write(self, dir_name, value, **kwargs):
         key = '/' + pj(self._base_dir, dir_name)
         return self._etcd.write(key, value, **kwargs)
@@ -62,10 +66,6 @@ class SimpleDiscoveryProtocol(object):
     def _exec_read(self, dir_name, **kwargs):
         key = '/' + pj(self._base_dir, dir_name)
         return self._etcd.read(key, **kwargs)
-
-    def cleanup(self):
-        key = '/' + self._base_dir
-        self._etcd.delete(key, recursive=True)
 
 
 class Server(object):
