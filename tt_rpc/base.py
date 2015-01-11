@@ -1,41 +1,32 @@
-from mprpc import RPCServer as GeventRPCServer, RPCClient as GeventRPCClient
-from google.protobuf import message
-from tt import conf as _cf
-
-RPC_REQUEST = 'rpc://req'
-RPC_RESPONSE = 'rpc://resp'
+import functools
+import conf as _cf
+import utils
 
 
-class UnPacker(object):
+def rpc_request(fn):
 
-    def feed(self, raw):
-        tp, msg_id, meth, body = raw.split(',')
-        assert meth in _cf.RPC_SERVICES, 'not support rpc service %s' % meth
-        req = _cf.RPC_SERVICES[meth][0]()
-        req.ParseFromString(body)
-        return iter(((tp, msg_id, meth, (req,)),))
+    @functools.wraps(fn)
+    def inner(rpc_server, raw):
+        _meth = fn.func_name
+        req = _cf.RPC_SERVICES[_meth][0]()
+        utils.load(req, raw)
+        resp = fn(rpc_server, req)
+        return utils.dump(resp)
 
-
-class Packer(object):
-
-    def pack(self, resp):
-        resp = list(resp)
-        assert isinstance(resp[3], message.Message), "Should support proto buf protocol"
-        resp[3] = resp[3].SerializeToString()
-        return ','.join(resp)
+    return inner
 
 
-class BaseRPCServer(GeventRPCServer):
+def rpc_response(fn):
 
-    def __init__(self, *args, **kwargs):
-        super(BaseRPCServer, self).__init__(*args, **kwargs)
-        self._packer = Packer()
-        self._unpacker = UnPacker()
+    @functools.wraps(fn)
+    def inner(rpc_client):
+        _meth = fn.func_name
+        resp = _cf.RPC_SERVICES[_meth][1]()
+        req = utils.dump(fn(rpc_client))
+        utils.load(resp, rpc_client.call(_meth, req))
+        if hasattr(rpc_client, 'on_{}'.format(_meth)):
+            hook = getattr(rpc_client, 'on_{}'.format(_meth))
+            return hook(resp)
+        return resp
 
-
-class BaseRPCClient(GeventRPCClient):
-
-    def __init__(self, *args, **kwargs):
-        super(BaseRPCClient, self).__init__(*args, **kwargs)
-        self._packer = Packer()
-        self._unpacker = UnPacker()
+    return inner

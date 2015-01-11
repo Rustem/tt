@@ -6,6 +6,7 @@ import etcd
 import gevent
 import greenclock
 import exc
+from build import tt_pb2 as proto
 from tt import Clock
 from tt_offset import ClockMonitor
 from tt_rpc import NewRPCServer, NewRPCClient, Bundle
@@ -91,8 +92,6 @@ class Server(object):
         self.neighbors = {}
         self._discovery_proto = SimpleDiscoveryProtocol()
         self._network_leader = False
-        self._scheduler = greenclock.Scheduler(
-            logger_name='%s_scheduler' % self.uuid)
 
     def start(self, cleanup=False):
         """Starter function:
@@ -132,10 +131,37 @@ class Server(object):
             self.start_heartbeat(_cli)
 
     def start_heartbeat(self, remote_rpc_client):
-        job = remote_rpc_client.heartbeat
+        scheduler = greenclock.Scheduler(
+            logger_name='%s_scheduler' % self.uuid)
+        job = self.heartbeat
         run_every = greenclock.every_second(_cf.HEARTBEAT_INTERVAL)
-        self._scheduler.schedule('hb', run_every, job)
-        self._scheduler.run_forever(start_at='once')
+        scheduler.schedule('hb', run_every, job, remote_rpc_client)
+        scheduler.run_forever(start_at='once')
+
+    def heartbeat(self, remote_rpc_client):
+        """Christian's algorithm for maintain offset also known
+        as probabilistic clock sync algorithm"""
+        send_time = self.clock.WallTime()
+        offset = proto.RemoteOffset()
+        with gevent.Timeout(_cf.HEARTBEAT_INTERVAL * 2):
+            response = remote_rpc_client.heartbeat()
+        if response is None:
+            offset = utils.max_offset()
+            offset.measured_at = self.clock.WallTime()
+        else:
+            recv_time = self.clock.WallTime()
+            if recv_time - send_time > _cf.MAX_CLOCK_READING_DELAY:
+                offset = utils.max_offset
+                offset.measured_at = recv_time
+            else:
+                rr_delay = recv_time - send_time - (
+                    response.send_time - response.recv_time)
+                offset.offset = response.send_time + (rr_delay / 2) - recv_time
+                offset.error = rr_delay / 2
+                offset.measured_at = recv_time
+        print offset
+        self.clock_monitor.UpdateRemoteOffset(self.uuid, offset)
+        return response
 
     def discover_network(self, cluster_id):
         self._discovery_proto.join(
