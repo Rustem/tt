@@ -159,7 +159,6 @@ class Server(object):
                 offset.offset = response.send_time + (rr_delay / 2) - recv_time
                 offset.error = rr_delay / 2
                 offset.measured_at = recv_time
-        print offset
         self.clock_monitor.UpdateRemoteOffset(self.uuid, offset)
         return response
 
