@@ -42,3 +42,13 @@ Further Work:
 memo:
 1. check number of byte from both sites
 2. why it's truncated
+
+
+Launch network
+--------------
+
+# open new terminal and launch
+python server.py 127.0.0.1:4001 --cluster_id=007 --max_offset=250 --cleanup=True
+
+# open new terminal again and launch
+ python server.py 127.0.0.1:4002 --cluster_id=007 --max_offset=250

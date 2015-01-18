@@ -3,4 +3,4 @@ protobuf
 python-etcd
 gevent
 mprpc
-greenclock
+-e git+git@github.com:pcdinh/greenclock.git@52df4f5bdfae296e01d253ae7a177c7fc90ba6c5#egg=greenclock

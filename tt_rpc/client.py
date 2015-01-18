@@ -1,7 +1,4 @@
-import gevent
-import conf as _cf
 import exc
-import utils
 from .base import rpc_response
 from build import tt_pb2 as proto
 from mprpc import RPCClient as BaseRPCClient
