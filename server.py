@@ -42,10 +42,7 @@ class SimpleDiscoveryProtocol(object):
 
     def leave(self, cluster_uuid, name=None):
         dir_name = pj(cluster_uuid, name)
-        try:
-            self._exec_delete(dir_name)
-        except KeyError:
-            pass   # silent
+        self._exec_delete(dir_name)
 
     def has_peers(self, cluster_id):
         dir_name = pj(cluster_id, 'state')
@@ -118,6 +115,7 @@ class Server(object):
             jobs.append(gevent.spawn(self.establish_conn, node_host))
         # gevent.joinall(jobs)   # todo(xepa4ep): might be timeout it
         gevent.spawn(self.clock_monitor.MonitorOffset)
+        gevent.spawn(self._scheduler.run_forever, 'once')
         self.rpc_server.serve_forever()
 
     def establish_conn(self, host):
@@ -138,17 +136,17 @@ class Server(object):
             _cli = self.neighbors[request.node_uuid] = NewRPCClient(
                 utils.parse_host(request.host), bundle=self.bundle)
             _node_id = _cli.remote_node_id = request.node_uuid
+            print "NOTE %s connected the cluster" % _node_id
             self.start_heartbeat(_cli, _node_id)
 
     def start_heartbeat(self, remote_rpc_client, remote_node_id):
         job = self.heartbeat
         run_every = greenclock.every_second(_cf.HEARTBEAT_INTERVAL)
         task_name = "%s_%s" % (HEARTBEAT_TASK, remote_node_id)
+        print "RESCHEDULE %s" % remote_node_id
         self._reschedule_task(
             task_name, run_every, job, remote_rpc_client, remote_node_id)
-
         print 'START HEARTBEATING'
-        self._scheduler.run_forever(start_at='once')
 
     def heartbeat(self, remote_rpc_client, remote_node_id):
         """Christian's algorithm for maintain offset also known
@@ -187,10 +185,11 @@ class Server(object):
         return response
 
     def cleanup_remote_peer(self, remote_node_id):
-        self._scheduler.unschedule('%s_%s' % (HEARTBEAT_TASK, remote_node_id))
+        self._scheduler.stop_task('%s_%s' % (HEARTBEAT_TASK, remote_node_id))
         self.neighbors.pop(remote_node_id, None)
-        self._discovery_proto.leave(
-            self.cluster_uuid, name=remote_node_id)
+        with gevent.Timeout(5):
+            self._discovery_proto.leave(
+                self.cluster_uuid, name=remote_node_id)
         print "NODE %s left cluster" % remote_node_id
 
     def discover_network(self, cluster_id):
@@ -216,10 +215,13 @@ class Server(object):
 
     def _reschedule_task(self, task_name, run_every, job, *args):
         try:
-            self._scheduler.unschedule(task_name)  # unschedule old
+            self._scheduler.stop_task(task_name)  # unschedule old
         except KeyError:
             pass   # if no task registered then silent
         self._scheduler.schedule(task_name, run_every, job, *args)
+        self._scheduler.stop()
+        gevent.sleep(1.5)
+        self._scheduler.run_forever()
 
 
 def main():
