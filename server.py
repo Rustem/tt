@@ -24,7 +24,6 @@ SERVICE_NAME = '_db'
 DEFAULT_MAX_OFFSET = 250 * 1000  # micro
 
 HEARTBEAT_TASK = 'hb'
-WATCH_NETWORK_TASK = 'ntw'
 
 
 class SimpleDiscoveryProtocol(object):
@@ -41,6 +40,13 @@ class SimpleDiscoveryProtocol(object):
         dir_name = pj(cluster_uuid, name)
         self._exec_write(dir_name, value=host, **kwargs)
 
+    def leave(self, cluster_uuid, name=None):
+        dir_name = pj(cluster_uuid, name)
+        try:
+            self._exec_delete(dir_name)
+        except KeyError:
+            pass   # silent
+
     def has_peers(self, cluster_id):
         dir_name = pj(cluster_id, 'state')
         try:
@@ -55,9 +61,6 @@ class SimpleDiscoveryProtocol(object):
         return ((peer.key, peer.value) for peer in result.children
                 if not peer.key.endswith('state'))
 
-    def watch_network(self, cluster_id):
-        pass
-
     def cleanup(self):
         key = '/' + self._base_dir
         self._etcd.delete(key, recursive=True)
@@ -69,6 +72,10 @@ class SimpleDiscoveryProtocol(object):
     def _exec_read(self, dir_name, **kwargs):
         key = '/' + pj(self._base_dir, dir_name)
         return self._etcd.read(key, **kwargs)
+
+    def _exec_delete(self, dir_name):
+        key = '/' + pj(self._base_dir, dir_name)
+        return self._etcd.delete(key)
 
 
 class Server(object):
@@ -104,7 +111,6 @@ class Server(object):
         if cleanup:
             self._discovery_proto.cleanup()
         peers = self.discover_network(self.cluster_uuid)
-        self.watch_network(self.cluster_uuid)
         jobs = []
         for node_uuid, node_host in peers:
             if utils.thats_me(node_uuid, self.uuid):
@@ -125,24 +131,31 @@ class Server(object):
             return
         rpc_client.remote_node_id = remote_node_id
         _cli = self.neighbors[remote_node_id] = rpc_client
-        self.start_heartbeat(_cli)
+        self.start_heartbeat(_cli, remote_node_id)
 
     def on_rpc_request(self, request_type, request):
-        print request_type + "#" + str(request)
         if request_type == _cf.AUTH_REQUEST:
             _cli = self.neighbors[request.node_uuid] = NewRPCClient(
                 utils.parse_host(request.host), bundle=self.bundle)
-            _cli.remote_node_id = request.node_uuid
-            self.start_heartbeat(_cli)
+            _node_id = _cli.remote_node_id = request.node_uuid
+            self.start_heartbeat(_cli, _node_id)
 
-    def start_heartbeat(self, remote_rpc_client):
+    def start_heartbeat(self, remote_rpc_client, remote_node_id):
         job = self.heartbeat
         run_every = greenclock.every_second(_cf.HEARTBEAT_INTERVAL)
+        task_name = "%s_%s" % (HEARTBEAT_TASK, remote_node_id)
         self._scheduler.schedule(
-            HEARTBEAT_TASK, run_every, job, remote_rpc_client)
+            task_name, run_every, job, remote_rpc_client, remote_node_id)
         self._scheduler.run_forever(start_at='once')
 
-    def heartbeat(self, remote_rpc_client):
+    def cleanup_remote_peer(self, remote_node_id):
+        self._scheduler.unschedule('%s_%s' % (HEARTBEAT_TASK, remote_node_id))
+        self.neighbors.pop(remote_node_id, None)
+        self._discovery_proto.leave(
+            self.cluster_uuid, name=remote_node_id)
+        print "NODE %s left cluster" % remote_node_id
+
+    def heartbeat(self, remote_rpc_client, remote_node_id):
         """Christian's algorithm for maintain offset also known
         as probabilistic clock sync algorithm"""
         send_time = self.clock.WallTime()
@@ -159,7 +172,7 @@ class Server(object):
                 retry_options, self._heartbeat, args=(remote_rpc_client,))
         except Exception as exc:
             print "UNSCHEDULING due to %s" % exc.reason   # log exception
-            self._scheduler.unschedule(HEARTBEAT_TASK)
+            self.cleanup_remote_peer(remote_node_id)
             return
         if response is None:
             offset = utils.max_offset()
@@ -192,12 +205,6 @@ class Server(object):
         if not self._discovery_proto.has_peers(cluster_id):
             self._network_leader = True
         return self._discovery_proto.get_peers(cluster_id)
-
-    def watch_network(self, cluster_id):
-        job = self._discovery_proto.watch_network
-        run_every = greenclock.every_second(60)
-        self._scheduler.schedule(
-            WATCH_NETWORK_TASK, run_every, job, cluster_id)
 
     def stop(self):
         for _sock in self.neighbors.values():

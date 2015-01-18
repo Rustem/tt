@@ -55,6 +55,7 @@ class ClockMonitor(object):
             gevent.sleep(cf.MONITOR_INTERVAL)
             try:
                 offset_interval = self.find_offset_interval()
+                print "MAINTAINING OFFSET: %s" % ((offset_interval,))
             except IntervalNotFoundError:
                 sys.exit("clock offset could not be determined.")
 
