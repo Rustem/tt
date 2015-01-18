@@ -144,16 +144,11 @@ class Server(object):
         job = self.heartbeat
         run_every = greenclock.every_second(_cf.HEARTBEAT_INTERVAL)
         task_name = "%s_%s" % (HEARTBEAT_TASK, remote_node_id)
-        self._scheduler.schedule(
+        self._reschedule_task(
             task_name, run_every, job, remote_rpc_client, remote_node_id)
-        self._scheduler.run_forever(start_at='once')
 
-    def cleanup_remote_peer(self, remote_node_id):
-        self._scheduler.unschedule('%s_%s' % (HEARTBEAT_TASK, remote_node_id))
-        self.neighbors.pop(remote_node_id, None)
-        self._discovery_proto.leave(
-            self.cluster_uuid, name=remote_node_id)
-        print "NODE %s left cluster" % remote_node_id
+        print 'START HEARTBEATING'
+        self._scheduler.run_forever(start_at='once')
 
     def heartbeat(self, remote_rpc_client, remote_node_id):
         """Christian's algorithm for maintain offset also known
@@ -191,13 +186,12 @@ class Server(object):
         self.clock_monitor.UpdateRemoteOffset(self.uuid, offset)
         return response
 
-    def _heartbeat(self, rpc_client):
-        try:
-            response = rpc_client.heartbeat()
-        except IOError as e:
-            return RETRY_CONTINUE, e
-        else:
-            return RETRY_BREAK, response
+    def cleanup_remote_peer(self, remote_node_id):
+        self._scheduler.unschedule('%s_%s' % (HEARTBEAT_TASK, remote_node_id))
+        self.neighbors.pop(remote_node_id, None)
+        self._discovery_proto.leave(
+            self.cluster_uuid, name=remote_node_id)
+        print "NODE %s left cluster" % remote_node_id
 
     def discover_network(self, cluster_id):
         self._discovery_proto.join(
@@ -210,6 +204,22 @@ class Server(object):
         for _sock in self.neighbors.values():
             _sock.close()
         self.rpc_server.stop()
+        self._scheduler.stop()
+
+    def _heartbeat(self, rpc_client):
+        try:
+            response = rpc_client.heartbeat()
+        except IOError as e:
+            return RETRY_CONTINUE, e
+        else:
+            return RETRY_BREAK, response
+
+    def _reschedule_task(self, task_name, run_every, job, *args):
+        try:
+            self._scheduler.unschedule(task_name)  # unschedule old
+        except KeyError:
+            pass   # if no task registered then silent
+        self._scheduler.schedule(task_name, run_every, job, *args)
 
 
 def main():
