@@ -11,7 +11,7 @@ From this paper the main observation is that for any event f
 |l.f - pt.f| <= eps, where eps is maximum offset maintained by NTP. At the same
 time another observation is that: c.f <= N * (eps + 1), where N is number of nodes in the system for that last eps.
 
-To maintain clock offset among set of nodes I used intersection algorithm that is also well-known as Marzullo algorithm. Synchronization of clocks in a network requires comparing them directly or indirectly with respect to differences in time and (possibly) frequency. The approach adopted here is based on variant of Christian's algorithm (Probabilistic clock synchronization).
+To maintain clock offset among set of nodes I utilized Marzullo intersection algorithm. Synchronization of clocks in a network requires comparing them directly or indirectly with respect to differences in time and (possibly) frequency. The approach adopted here is based on variant of Christian's algorithm (Probabilistic clock synchronization).
 
 Algorithm workflow:
 

@@ -14,7 +14,7 @@ consist of the largest wall clock time among all
 events, and a logical clock that ticks whenever
 an event happens in the future of the local physical
 clock. The data structure is thread safe and thus can safely
-be shared by multiple goroutines."""
+be shared by multiple threads."""
 
 
 MICRO = 10 ** 6
